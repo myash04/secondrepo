@@ -1,0 +1,64 @@
+CREATE COMPUTE MODULE MASTER_ALPHA_REPLICATION_Compute
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	
+	BEGIN
+		DECLARE DQERR CHAR;
+		DECLARE DQMERR CHAR;
+		DECLARE DQM CHAR;
+		DECLARE ERR CHAR;
+		SET ERR = SUBSTRING(InputExceptionList.RecoverableException.RecoverableException.RecoverableException.Label AFTER 'REPLICATE.');
+		--CHECK EXCEPTIONLIST
+		IF (CARDINALITY(InputExceptionList.RecoverableException.*[]) = 0) THEN
+			
+			SET OutputRoot = InputRoot;
+			PROPAGATE TO TERMINAL 'out1';
+			SET OutputRoot = InputRoot;
+			PROPAGATE TO TERMINAL 'out2';
+			SET OutputRoot = InputRoot;
+			PROPAGATE TO TERMINAL 'out3';
+
+			RETURN FALSE;
+		ELSE
+			SET DQERR = InputExceptionList.RecoverableException.RecoverableException.RecoverableException.MessageException.Text;
+			SET DQMERR = InputExceptionList.RecoverableException.RecoverableException.RecoverableException.RecoverableException.Text;	
+	
+			--CHECK QUEUE MANAGER DOWN
+			IF (DQMERR = 'Failed to connect to queue manager') THEN
+				IF ( ERR = 'TPH_MASTER_BRAVO') THEN
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out3';
+					RETURN FALSE;
+				ELSEIF (ERR = 'TPH_MASTER_ALPHABUFF') THEN
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out2';
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out3';
+					RETURN FALSE;
+				ELSEIF (ERR = 'TPH_MASTER_CHARLIE') THEN
+					RETURN FALSE;
+				END IF;
+			END IF;
+			--CHECK QUEUE DOWN
+			IF (DQERR = 'Failed to open queue') THEN
+				IF ( ERR = 'TPH_MASTER_BRAVO') THEN
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out3';
+					RETURN FALSE;
+				ELSEIF (ERR = 'TPH_MASTER_ALPHABUFF') THEN
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out2';
+					SET OutputRoot = InputRoot;
+					PROPAGATE TO TERMINAL 'out3';
+					RETURN FALSE;
+				ELSEIF (ERR = 'TPH_MASTER_CHARLIE') THEN
+					RETURN FALSE;
+				END IF;	
+			END IF;
+			SET OutputRoot = InputRoot;
+			PROPAGATE TO TERMINAL 'out1';
+			RETURN FALSE;				
+		END IF;		
+		
+		--RETURN TRUE;
+	END;
+END MODULE;
